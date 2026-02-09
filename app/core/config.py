@@ -2,7 +2,7 @@ from pydantic_settings import BaseSettings
 
 
 class Settings(BaseSettings):
-    DATABASE_URL: str = "postgresql+psycopg://crm:crm@localhost:5432/crm"
+    DATABASE_URL: str = "sqlite:///./crm.db"
     JWT_SECRET: str = "CHANGE_ME_SUPER_LONG"
     JWT_ALG: str = "HS256"
     ACCESS_TOKEN_MINUTES: int = 60 * 12
