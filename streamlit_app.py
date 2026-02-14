@@ -2,9 +2,188 @@
 # Sales Tree CRM — Streamlit Standalone App
 # (No backend API, all logic will be local or in this file)
 
+
 import streamlit as st
 import copy
 from datetime import date, datetime
+
+# ── Local API Helper Functions ──
+import types
+
+class DummyResponse:
+    def __init__(self, data=None, status_code=200, text=None):
+        self._data = data
+        self.status_code = status_code
+        self.text = text or ""
+    def json(self):
+        return self._data
+
+def api_post(endpoint, payload):
+    # Simulate POST: add to session state
+    if endpoint == "/companies":
+        companies = st.session_state.companies
+        new_id = max([c.get("id", 0) for c in companies] or [0]) + 1
+        payload = dict(payload)
+        payload["id"] = new_id
+        companies.append(payload)
+        return DummyResponse(payload)
+    if endpoint == "/contacts":
+        contacts = st.session_state.contacts
+        new_id = max([c.get("id", 0) for c in contacts] or [0]) + 1
+        payload = dict(payload)
+        payload["id"] = new_id
+        contacts.append(payload)
+        return DummyResponse(payload)
+    if endpoint == "/deals":
+        deals = st.session_state.deals
+        new_id = max([d.get("id", 0) for d in deals] or [0]) + 1
+        payload = dict(payload)
+        payload["id"] = new_id
+        deals.append(payload)
+        return DummyResponse(payload)
+    if endpoint == "/activities":
+        activities = st.session_state.activities
+        new_id = max([a.get("id", 0) for a in activities] or [0]) + 1
+        payload = dict(payload)
+        payload["id"] = new_id
+        activities.append(payload)
+        return DummyResponse(payload)
+    if endpoint == "/items":
+        items = st.session_state.pos
+        new_id = max([i.get("id", 0) for i in items] or [0]) + 1
+        payload = dict(payload)
+        payload["id"] = new_id
+        items.append(payload)
+        return DummyResponse(payload)
+    if endpoint == "/quotes":
+        quotes = st.session_state.quotes
+        new_id = max([q.get("id", 0) for q in quotes] or [0]) + 1
+        payload = dict(payload)
+        payload["id"] = new_id
+        quotes.append(payload)
+        return DummyResponse(payload)
+    if endpoint == "/purchase-orders":
+        pos = st.session_state.pos
+        new_id = max([p.get("id", 0) for p in pos] or [0]) + 1
+        payload = dict(payload)
+        payload["id"] = new_id
+        pos.append(payload)
+        return DummyResponse(payload)
+    if endpoint == "/pricelists":
+        if "pricelists" not in st.session_state:
+            st.session_state.pricelists = []
+        pls = st.session_state.pricelists
+        new_id = max([p.get("id", 0) for p in pls] or [0]) + 1
+        payload = dict(payload)
+        payload["id"] = new_id
+        payload["lines"] = []
+        pls.append(payload)
+        return DummyResponse(payload)
+    if endpoint == "/emails/send":
+        if "emails" not in st.session_state:
+            st.session_state.emails = []
+        emails = st.session_state.emails
+        new_id = max([e.get("id", 0) for e in emails] or [0]) + 1
+        payload = dict(payload)
+        payload["id"] = new_id
+        payload["direction"] = "out"
+        emails.append(payload)
+        return DummyResponse(payload)
+    return DummyResponse({}, 404, "Not implemented")
+
+def api_get(endpoint, params=None):
+    # Simulate GET: fetch from session state
+    if endpoint == "/companies":
+        companies = st.session_state.companies
+        if params:
+            if params.get("is_customer"):
+                companies = [c for c in companies if c.get("is_customer")]
+            if params.get("is_supplier"):
+                companies = [c for c in companies if c.get("is_supplier")]
+        return DummyResponse(companies)
+    if endpoint == "/contacts":
+        return DummyResponse(st.session_state.contacts)
+    if endpoint == "/deals":
+        return DummyResponse(st.session_state.deals)
+    if endpoint == "/activities":
+        return DummyResponse(st.session_state.activities)
+    if endpoint == "/items":
+        return DummyResponse(st.session_state.pos)
+    if endpoint == "/quotes":
+        return DummyResponse(st.session_state.quotes)
+    if endpoint == "/purchase-orders":
+        return DummyResponse(st.session_state.pos)
+    if endpoint == "/pricelists":
+        return DummyResponse(getattr(st.session_state, "pricelists", []))
+    if endpoint == "/emails":
+        return DummyResponse(getattr(st.session_state, "emails", []))
+    if endpoint.startswith("/pricelists/") and endpoint.endswith("/lines"):
+        pl_id = int(endpoint.split("/")[2])
+        pls = getattr(st.session_state, "pricelists", [])
+        for pl in pls:
+            if pl["id"] == pl_id:
+                return DummyResponse(pl.get("lines", []))
+        return DummyResponse([])
+    return DummyResponse({}, 404, "Not implemented")
+
+def api_delete(endpoint):
+    # Simulate DELETE: remove from session state
+    if endpoint.startswith("/companies/"):
+        cid = int(endpoint.split("/")[2])
+        st.session_state.companies = [c for c in st.session_state.companies if c["id"] != cid]
+        return DummyResponse({}, 200)
+    if endpoint.startswith("/contacts/"):
+        cid = int(endpoint.split("/")[2])
+        st.session_state.contacts = [c for c in st.session_state.contacts if c["id"] != cid]
+        return DummyResponse({}, 200)
+    if endpoint.startswith("/deals/"):
+        did = int(endpoint.split("/")[2])
+        st.session_state.deals = [d for d in st.session_state.deals if d["id"] != did]
+        return DummyResponse({}, 200)
+    if endpoint.startswith("/items/"):
+        iid = int(endpoint.split("/")[2])
+        st.session_state.pos = [i for i in st.session_state.pos if i["id"] != iid]
+        return DummyResponse({}, 200)
+    if endpoint.startswith("/pricelists/"):
+        plid = int(endpoint.split("/")[2])
+        pls = getattr(st.session_state, "pricelists", [])
+        st.session_state.pricelists = [pl for pl in pls if pl["id"] != plid]
+        return DummyResponse({}, 200)
+    return DummyResponse({}, 404, "Not implemented")
+
+def api_patch(endpoint, payload=None):
+    # Simulate PATCH: update in session state
+    if endpoint.startswith("/deals/") and endpoint.endswith("/stage"):
+        did = int(endpoint.split("/")[2])
+        for d in st.session_state.deals:
+            if d["id"] == did:
+                d["stage"] = payload["stage"]
+                return DummyResponse(d)
+        return DummyResponse({}, 404, "Not found")
+    if endpoint.startswith("/activities/") and endpoint.endswith("/complete"):
+        aid = int(endpoint.split("/")[2])
+        for a in st.session_state.activities:
+            if a["id"] == aid:
+                a["completed_at"] = datetime.now().isoformat()
+                return DummyResponse(a)
+        return DummyResponse({}, 404, "Not found")
+    return DummyResponse({}, 404, "Not implemented")
+
+def api_headers():
+    return {}
+
+# Dummy API base for PDF download simulation
+API = "http://localhost:8000"
+
+# Dummy requests for PDF download simulation
+class requests:
+    @staticmethod
+    def get(url, headers=None, timeout=30):
+        # Simulate PDF download: always fail (no backend)
+        class DummyPDF:
+            status_code = 404
+            content = b""
+        return DummyPDF()
 
 # ── Config ───────────────────────────────────────────────────
 
