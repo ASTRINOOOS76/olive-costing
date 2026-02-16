@@ -39,3 +39,9 @@ def send_smtp(
         s.starttls()
         s.login(settings.SMTP_USER, settings.SMTP_PASS)
         s.send_message(msg)
+
+def send_prediction_email(deal_id, prediction):
+    # Stub: send email based on ML prediction
+    # You can implement actual email sending logic here
+    print(f"Sending email for deal {deal_id} with prediction {prediction}")
+    return True
